@@ -86,6 +86,27 @@
     margin-bottom:10px;
     display:block;
   }
+  .section-label-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .section-label-row .section-label{margin-bottom:0;}
+  .mini-copy-btn{
+    background:transparent;
+    border:1px solid var(--panel-border);
+    color:var(--text-dim);
+    font-family:inherit;
+    font-size:0.68rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:5px 9px;
+    border-radius:5px;
+    cursor:pointer;
+    min-height:32px;
+  }
+  .mini-copy-btn:hover{color:var(--accent);border-color:var(--accent-dim);}
   .picker-group{
     display:flex;
     flex-wrap:wrap;
@@ -298,7 +319,10 @@
   </section>
 
   <section>
-    <span class="section-label">Message To Transmit</span>
+    <div class="section-label-row">
+      <span class="section-label">Message To Transmit</span>
+      <button class="mini-copy-btn" id="btnCopyMessage" type="button">Copy</button>
+    </div>
     <textarea id="messageInput" placeholder="Type your message here..."></textarea>
     <label class="strip-row">
       <input type="checkbox" id="stripSpaces">
@@ -313,14 +337,17 @@
     <div class="actions">
       <button class="action-btn" id="btnEncode" type="button">Encode</button>
       <button class="action-btn" id="btnDecode" type="button">Decode</button>
-      <button class="action-btn secondary" id="btnCopy" type="button">Copy Output</button>
+      <button class="action-btn secondary" id="btnSMS" type="button">Text via SMS</button>
       <button class="action-btn secondary" id="btnMystery" type="button">Mystery Message</button>
     </div>
     <p class="status" id="statusLine">&nbsp;</p>
   </section>
 
   <section>
-    <span class="section-label">Transmission Received</span>
+    <div class="section-label-row">
+      <span class="section-label">Transmission Received</span>
+      <button class="mini-copy-btn" id="btnCopyOutputMini" type="button">Copy</button>
+    </div>
     <textarea id="output" readonly placeholder="Output appears here..."></textarea>
   </section>
 
@@ -745,30 +772,46 @@
     statusLine.textContent = CIPHERS[activeCipher].name + " transmission decoded.";
   });
 
-  document.getElementById("btnCopy").addEventListener("click", function(){
-    var text = output.value;
+  function copyText(text, sourceElement, successMsg){
     if (!text) { statusLine.textContent = "Nothing to copy yet."; return; }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function(){
-        statusLine.textContent = "Output copied.";
+        statusLine.textContent = successMsg;
       }).catch(function(){
-        fallbackCopy(text);
+        fallbackCopyFrom(sourceElement, successMsg);
       });
     } else {
-      fallbackCopy(text);
+      fallbackCopyFrom(sourceElement, successMsg);
     }
-  });
+  }
 
-  function fallbackCopy(text){
+  function fallbackCopyFrom(el, successMsg){
     try {
-      output.focus();
-      output.select();
+      el.focus();
+      el.select();
       var ok = document.execCommand("copy");
-      statusLine.textContent = ok ? "Output copied." : "Copy failed. Select and copy manually.";
+      statusLine.textContent = ok ? successMsg : "Copy failed. Select and copy manually.";
     } catch (e) {
       statusLine.textContent = "Copy failed. Select and copy manually.";
     }
   }
+
+  document.getElementById("btnCopyMessage").addEventListener("click", function(){
+    copyText(messageInput.value, messageInput, "Message copied.");
+  });
+
+  document.getElementById("btnCopyOutputMini").addEventListener("click", function(){
+    copyText(output.value, output, "Output copied.");
+  });
+
+  document.getElementById("btnSMS").addEventListener("click", function(){
+    var text = output.value || messageInput.value;
+    if (!text) { statusLine.textContent = "Nothing to send yet."; return; }
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    var uri = (isIOS ? "sms:&body=" : "sms:?body=") + encodeURIComponent(text);
+    window.location.href = uri;
+    statusLine.textContent = "Opening text message...";
+  });
 
   var MYSTERY_PHRASES = [
     "THE SHOCKER STRIKES AT MIDNIGHT",
